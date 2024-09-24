@@ -1,5 +1,6 @@
 import 'dart:async'; // Para usar Timer
 import 'package:flutter/material.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart'; // Importa permiso para notificaciones
 
@@ -36,8 +37,34 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
   @override
   void initState() {
     super.initState();
+    initializeService(onStart);
     requestNotificationPermission();
     initializeNotifications();
+  }
+
+  Future<void> initializeService(dynamic fuctionToExecuteSecondPlane) async {
+    final service = FlutterBackgroundService();
+
+    // Configurar el servicio para Android
+    service.configure(
+      androidConfiguration: AndroidConfiguration(
+        onStart: fuctionToExecuteSecondPlane,
+        isForegroundMode: true,
+      ),
+      iosConfiguration: IosConfiguration(
+        autoStart: true,
+        onForeground: fuctionToExecuteSecondPlane,
+        onBackground: onIosBackground,
+      ),
+    );
+
+    service.startService();
+  }
+
+  // Solo en iOS: Esta función permite que el servicio siga funcionando en segundo plano
+  bool onIosBackground(ServiceInstance service) {
+    WidgetsFlutterBinding.ensureInitialized();
+    return true;
   }
 
   void requestNotificationPermission() async {
@@ -48,7 +75,6 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
   }
 
   Future<void> initializeNotifications() async {
-    WidgetsFlutterBinding.ensureInitialized();
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('azulejo_profile');
 
@@ -303,4 +329,24 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
     //selectNotificationStream.close();
     super.dispose();
   }
+}
+
+// Esta función se ejecuta cuando el servicio se inicia
+void onStart(ServiceInstance service) {
+  // Temporizador que se ejecuta cada segundo
+  Timer.periodic(const Duration(seconds: 1), (timer) async {
+    if (service is AndroidServiceInstance) {
+      if (await service.isForegroundService()) {
+        // Actualiza la notificación de servicio en primer plano
+        service.setForegroundNotificationInfo(
+          title: "Servicio de Contador",
+          content: "Contando en segundo plano...",
+        );
+      }
+    }
+
+    // Incrementa el contador y actualiza la UI
+    print("Servicio ejecutándose en segundo plano: ${DateTime.now()}");
+    service.invoke("update");
+  });
 }
