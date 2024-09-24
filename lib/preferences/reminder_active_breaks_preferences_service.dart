@@ -1,25 +1,27 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:reminder_active_breaks/preferences/preference_utils.dart';
 
 class ReminderActiveBreaksPreferencesService {
-  static late SharedPreferences _prefs;
-  static const int _reminderActiveBreak = 3600;
-  static const int _reminderDidYouTakeActivePause = 60;
-
-  // Inicializa SharedPreferences
-  static Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
-  }
+  static const int _reminderActiveBreak = 10;
+  static const int _reminderDidYouTakeActivePause = 5;
 
   static const String _timerSecondsRemainingNextActiveBreakIsUpKey =
       'timerSecondsRemainingNextActiveBreakIsUpKey';
 
   static Future<void> setTimerSecondsRemainingNextActiveBreakIsUpBreak(
       bool value) async {
-    await _prefs.setBool(_timerSecondsRemainingNextActiveBreakIsUpKey, value);
+    await PreferencesUtils.setBool(
+        ReminderActiveBreaksPreferencesService
+            ._timerSecondsRemainingNextActiveBreakIsUpKey,
+        value);
   }
 
-  static bool getTimerSecondsRemainingNextActiveBreakIsUpBreak() {
-    return _prefs.getBool(_timerSecondsRemainingNextActiveBreakIsUpKey) ?? true;
+  static Future<bool> getTimerSecondsRemainingNextActiveBreakIsUpBreak() {
+    bool? output;
+    PreferencesUtils.getBool(ReminderActiveBreaksPreferencesService
+            ._timerSecondsRemainingNextActiveBreakIsUpKey)
+        .then((onValue) => output = onValue);
+
+    return Future.value(output ?? false);
   }
 
   static const String _timerSecondsRemainingDidYouTakeActivePauseIsUpKey =
@@ -27,13 +29,19 @@ class ReminderActiveBreaksPreferencesService {
 
   static Future<void> setTimerSecondsRemainingDidYouTakeActivePauseIsUp(
       bool value) async {
-    await _prefs.setBool(
-        _timerSecondsRemainingDidYouTakeActivePauseIsUpKey, value);
+    await PreferencesUtils.setBool(
+        ReminderActiveBreaksPreferencesService
+            ._timerSecondsRemainingDidYouTakeActivePauseIsUpKey,
+        value);
   }
 
-  static bool getTimerSecondsRemainingDidYouTakeActivePauseIsUp() {
-    return _prefs.getBool(_timerSecondsRemainingDidYouTakeActivePauseIsUpKey) ??
-        true;
+  static Future<bool> getTimerSecondsRemainingDidYouTakeActivePauseIsUp() {
+    bool? output;
+    PreferencesUtils.getBool(ReminderActiveBreaksPreferencesService
+            ._timerSecondsRemainingDidYouTakeActivePauseIsUpKey)
+        .then((onValue) => output = onValue);
+
+    return Future.value(output ?? false);
   }
 
   //------------ Tiempo en segundos restanta para la pausa activa, default
@@ -42,16 +50,20 @@ class ReminderActiveBreaksPreferencesService {
 
   static Future<void> setDefaultSecondsRemainingNextActiveBreak(
       int value) async {
-    await _prefs.setInt(_defaultSecondsRemainingNextActiveBreakKey, value);
+    await PreferencesUtils.setInt(
+        ReminderActiveBreaksPreferencesService
+            ._defaultSecondsRemainingNextActiveBreakKey,
+        value);
   }
 
-  static int getDefaultSecondsRemainingNextActiveBreak() {
-    return _prefs.getInt(_defaultSecondsRemainingNextActiveBreakKey) ??
-        ReminderActiveBreaksPreferencesService._reminderActiveBreak;
-  }
+  static Future<int> getDefaultSecondsRemainingNextActiveBreak() {
+    int? output;
+    PreferencesUtils.getInt(ReminderActiveBreaksPreferencesService
+            ._defaultSecondsRemainingNextActiveBreakKey)
+        .then((onValue) => output = onValue);
 
-  static Future<void> removeDefaultSecondsRemainingNextActiveBreak() async {
-    await _prefs.remove(_defaultSecondsRemainingNextActiveBreakKey);
+    return Future.value(
+        output ?? ReminderActiveBreaksPreferencesService._reminderActiveBreak);
   }
 
 //------------ Tiempo en segundos restanta para la pausa activa
@@ -60,16 +72,20 @@ class ReminderActiveBreaksPreferencesService {
       'secondsRemainingNextActiveBreak';
 
   static Future<void> setSecondsRemainingNextActiveBreak(int value) async {
-    await _prefs.setInt(_secondsRemainingNextActiveBreakKey, value);
+    await PreferencesUtils.setInt(
+        ReminderActiveBreaksPreferencesService
+            ._secondsRemainingNextActiveBreakKey,
+        value);
   }
 
-  static int getSecondsRemainingNextActiveBreak() {
-    return _prefs.getInt(_secondsRemainingNextActiveBreakKey) ??
-        ReminderActiveBreaksPreferencesService._reminderActiveBreak;
-  }
+  static Future<int> getSecondsRemainingNextActiveBreak() {
+    int? output;
+    PreferencesUtils.getInt(ReminderActiveBreaksPreferencesService
+            ._secondsRemainingNextActiveBreakKey)
+        .then((onValue) => output = onValue);
 
-  static Future<void> removeSecondsRemainingNextActiveBreak() async {
-    await _prefs.remove(_secondsRemainingNextActiveBreakKey);
+    return Future.value(
+        output ?? ReminderActiveBreaksPreferencesService._reminderActiveBreak);
   }
 
 //------------ Tiempo en segundos para la validacion de la toma de la pausa activa
@@ -78,16 +94,20 @@ class ReminderActiveBreaksPreferencesService {
 
   static Future<void> setSecondsRemainingDidYouTakeActivePause(
       int value) async {
-    await _prefs.setInt(_secondsRemainingDidYouTakeActivePauseKey, value);
+    await PreferencesUtils.setInt(
+        ReminderActiveBreaksPreferencesService
+            ._secondsRemainingDidYouTakeActivePauseKey,
+        value);
   }
 
-  static int getSecondsRemainingDidYouTakeActivePause() {
-    return _prefs.getInt(_secondsRemainingDidYouTakeActivePauseKey) ??
-        ReminderActiveBreaksPreferencesService._reminderDidYouTakeActivePause;
-  }
+  static Future<int> getSecondsRemainingDidYouTakeActivePause() {
+    int? output;
+    PreferencesUtils.getInt(ReminderActiveBreaksPreferencesService
+            ._secondsRemainingDidYouTakeActivePauseKey)
+        .then((onValue) => output = onValue);
 
-  static Future<void> removeSecondsRemainingDidYouTakeActivePause() async {
-    await _prefs.remove(_secondsRemainingDidYouTakeActivePauseKey);
+    return Future.value(output ??
+        ReminderActiveBreaksPreferencesService._reminderDidYouTakeActivePause);
   }
 
 //------------ Tiempo en segundos para la validacion de la toma de la pausa activa, default
@@ -96,17 +116,19 @@ class ReminderActiveBreaksPreferencesService {
 
   static Future<void> setDefaultSecondsRemainingDidYouTakeActivePause(
       int value) async {
-    await _prefs.setInt(
-        _defaultSecondsRemainingDidYouTakeActivePauseKey, value);
+    await PreferencesUtils.setInt(
+        ReminderActiveBreaksPreferencesService
+            ._defaultSecondsRemainingDidYouTakeActivePauseKey,
+        value);
   }
 
-  static int getDefaultSecondsRemainingDidYouTakeActivePause() {
-    return _prefs.getInt(_defaultSecondsRemainingDidYouTakeActivePauseKey) ??
-        ReminderActiveBreaksPreferencesService._reminderDidYouTakeActivePause;
-  }
+  static Future<int> getDefaultSecondsRemainingDidYouTakeActivePause() {
+    int? output;
+    PreferencesUtils.getInt(ReminderActiveBreaksPreferencesService
+            ._defaultSecondsRemainingDidYouTakeActivePauseKey)
+        .then((onValue) => output = onValue);
 
-  static Future<void>
-      removeDefaultSecondsRemainingDidYouTakeActivePause() async {
-    await _prefs.remove(_defaultSecondsRemainingDidYouTakeActivePauseKey);
+    return Future.value(output ??
+        ReminderActiveBreaksPreferencesService._reminderDidYouTakeActivePause);
   }
 }
