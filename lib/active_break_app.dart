@@ -2,7 +2,8 @@ import 'dart:async'; // Para usar Timer
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:permission_handler/permission_handler.dart'; // Importa permiso para notificaciones
+import 'package:permission_handler/permission_handler.dart';
+import 'package:reminder_active_breaks/preferences/reminder_active_breaks_preferences_service.dart'; // Importa permiso para notificaciones
 
 class ActiveBreakApp extends StatefulWidget {
   @override
@@ -10,55 +11,51 @@ class ActiveBreakApp extends StatefulWidget {
 }
 
 class _ActiveBreakAppState extends State<ActiveBreakApp> {
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
-/*  final StreamController<String?> selectNotificationStream =
-      StreamController<String?>.broadcast();*/
+  int defaultSecondsRemainingNextActiveBreak = 3600;
 
-  //int secondsRemaining = 1800; // Por ejemplo, 1800 segundos = 30 minutos
-  int defaultSecondsRemainingNextActiveBreak =
-      3600; // Por ejemplo, 1800 segundos = 30 minutos
-  int secondsRemainingNextActiveBreak =
-      3600; // Por ejemplo, 1800 segundos = 30 minutos
+  int secondsRemainingNextActiveBreak = 3600;
+
   late Timer timerNextActiveBreak;
+  bool timerNextActiveBreakIsUp = true;
 
-  //int secondsRemaining = 1800; // Por ejemplo, 1800 segundos = 30 minutos
-  int defaultSecondsRemaininDidYouTakeActivePause =
-      60; // Por ejemplo, 1800 segundos = 30 minutos
-  int secondsRemainingDidYouTakeActivePause =
-      60; // Por ejemplo, 1800 segundos = 30 minutos
+  int defaultSecondsRemaininDidYouTakeActivePause = 60;
+
+  int secondsRemainingDidYouTakeActivePause = 60;
   static const String actionSubmitDidYouTakeActivePauseId =
       'i_did_take_active_pause';
   static const String actionDeclineDidYouTakeActivePauseId =
       'i_did_not_take_active_pause';
   late Timer timerDidYouTakeActivePause;
+  bool timerDidYouTakeActivePauseIsUp = true;
 
   @override
   void initState() {
     super.initState();
-    initializeService(onStart);
+    _loadTimer();
     requestNotificationPermission();
     initializeNotifications();
   }
 
-  Future<void> initializeService(dynamic fuctionToExecuteSecondPlane) async {
-    final service = FlutterBackgroundService();
-
-    // Configurar el servicio para Android
-    service.configure(
-      androidConfiguration: AndroidConfiguration(
-        onStart: fuctionToExecuteSecondPlane,
-        isForegroundMode: true,
-      ),
-      iosConfiguration: IosConfiguration(
-        autoStart: true,
-        onForeground: fuctionToExecuteSecondPlane,
-        onBackground: onIosBackground,
-      ),
-    );
-
-    service.startService();
+  void _loadTimer() async {
+    setState(() {
+      timerNextActiveBreakIsUp = ReminderActiveBreaksPreferencesService
+          .getTimerSecondsRemainingNextActiveBreakIsUpBreak();
+      timerDidYouTakeActivePauseIsUp = ReminderActiveBreaksPreferencesService
+          .getTimerSecondsRemainingDidYouTakeActivePauseIsUp();
+      defaultSecondsRemainingNextActiveBreak =
+          ReminderActiveBreaksPreferencesService
+              .getDefaultSecondsRemainingNextActiveBreak();
+      secondsRemainingNextActiveBreak = ReminderActiveBreaksPreferencesService
+          .getSecondsRemainingNextActiveBreak();
+      defaultSecondsRemaininDidYouTakeActivePause =
+          ReminderActiveBreaksPreferencesService
+              .getDefaultSecondsRemainingDidYouTakeActivePause();
+      secondsRemainingDidYouTakeActivePause =
+          ReminderActiveBreaksPreferencesService
+              .getSecondsRemainingDidYouTakeActivePause();
+    });
   }
 
   // Solo en iOS: Esta función permite que el servicio siga funcionando en segundo plano
@@ -75,13 +72,14 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
   }
 
   Future<void> initializeNotifications() async {
+    flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('azulejo_profile');
 
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
 
-    //flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse:
@@ -93,7 +91,8 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
             handleAction(notificationResponse.actionId ?? '');
             break;
           case NotificationResponseType.selectedNotification:
-          // TODO: Handle this case.
+            // TODO: Handle this case.
+            break;
         }
       },
       //onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
@@ -125,11 +124,27 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
 
   // Función que inicia el temporizador y cuenta hacia atrás
   void startTimerNextActiveBreak() {
+    setState(() {
+      timerNextActiveBreakIsUp = true;
+      ReminderActiveBreaksPreferencesService
+          .setTimerSecondsRemainingNextActiveBreakIsUpBreak(
+              timerNextActiveBreakIsUp);
+
+      timerDidYouTakeActivePauseIsUp = false;
+      ReminderActiveBreaksPreferencesService
+          .setTimerSecondsRemainingDidYouTakeActivePauseIsUp(
+              timerDidYouTakeActivePauseIsUp);
+    });
     timerNextActiveBreak = Timer.periodic(const Duration(seconds: 1),
         (Timer timerOfTimerNextActiveBreak) {
       setState(() {
-        if (secondsRemainingNextActiveBreak > 0) {
+        if (!timerNextActiveBreakIsUp) {
+          timerOfTimerNextActiveBreak.cancel();
+        } else if (secondsRemainingNextActiveBreak > 0) {
           secondsRemainingNextActiveBreak--;
+          ReminderActiveBreaksPreferencesService
+              .setSecondsRemainingNextActiveBreak(
+                  secondsRemainingNextActiveBreak);
         } else {
           // Mostrar notificación cuando el tiempo llega a cero
           showNotification(
@@ -143,11 +158,22 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
   }
 
   void starTimerDidYouTakeActivePause() {
+    setState(() {
+      timerDidYouTakeActivePauseIsUp = true;
+      ReminderActiveBreaksPreferencesService
+          .setTimerSecondsRemainingDidYouTakeActivePauseIsUp(
+              timerDidYouTakeActivePauseIsUp);
+    });
     timerDidYouTakeActivePause = Timer.periodic(const Duration(seconds: 1),
         (Timer timerOfTimerDidYouTakeActivePause) {
       setState(() {
-        if (secondsRemainingDidYouTakeActivePause > 0) {
+        if (!timerDidYouTakeActivePauseIsUp) {
+          timerOfTimerDidYouTakeActivePause.cancel();
+        } else if (secondsRemainingDidYouTakeActivePause > 0) {
           secondsRemainingDidYouTakeActivePause--;
+          ReminderActiveBreaksPreferencesService
+              .setSecondsRemainingDidYouTakeActivePause(
+                  secondsRemainingDidYouTakeActivePause);
         } else {
           // Mostrar notificación cuando el tiempo llega a cero
           showNotification(
@@ -173,6 +199,9 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
               ]);
           secondsRemainingDidYouTakeActivePause =
               defaultSecondsRemaininDidYouTakeActivePause;
+          ReminderActiveBreaksPreferencesService
+              .setSecondsRemainingDidYouTakeActivePause(
+                  secondsRemainingDidYouTakeActivePause);
           //timerOfTimerDidYouTakeActivePause.cancel();
         }
       });
@@ -181,17 +210,45 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
 
   void restartTimerNextActiveBreak() {
     // Reiniciar el temporizador para la próxima pausa
-    secondsRemainingNextActiveBreak = defaultSecondsRemainingNextActiveBreak;
-    timerNextActiveBreak.cancel();
-    timerDidYouTakeActivePause.cancel();
-    startTimerNextActiveBreak();
+    setState(() {
+      secondsRemainingNextActiveBreak = defaultSecondsRemainingNextActiveBreak;
+      ReminderActiveBreaksPreferencesService.setSecondsRemainingNextActiveBreak(
+          secondsRemainingNextActiveBreak);
+
+      secondsRemainingDidYouTakeActivePause =
+          defaultSecondsRemaininDidYouTakeActivePause;
+      ReminderActiveBreaksPreferencesService
+          .setSecondsRemainingDidYouTakeActivePause(
+              secondsRemainingDidYouTakeActivePause);
+
+      timerNextActiveBreakIsUp = true;
+      ReminderActiveBreaksPreferencesService
+          .setTimerSecondsRemainingNextActiveBreakIsUpBreak(
+              timerNextActiveBreakIsUp);
+
+      timerDidYouTakeActivePauseIsUp = false;
+      ReminderActiveBreaksPreferencesService
+          .setTimerSecondsRemainingDidYouTakeActivePauseIsUp(
+              timerDidYouTakeActivePauseIsUp);
+    }); // Actualizar la UI
   }
 
   void stopTimerDidYouTakeActivePause() {
-    // Reiniciar el temporizador para la próxima pausa
-    secondsRemainingDidYouTakeActivePause =
-        defaultSecondsRemaininDidYouTakeActivePause;
-    timerDidYouTakeActivePause.cancel();
+    setState(() {
+      timerDidYouTakeActivePauseIsUp = false;
+      ReminderActiveBreaksPreferencesService
+          .setTimerSecondsRemainingDidYouTakeActivePauseIsUp(
+              timerDidYouTakeActivePauseIsUp);
+    });
+  }
+
+  void stopTimerNextActiveBreak() {
+    setState(() {
+      timerNextActiveBreakIsUp = false;
+      ReminderActiveBreaksPreferencesService
+          .setTimerSecondsRemainingNextActiveBreakIsUpBreak(
+              timerNextActiveBreakIsUp);
+    });
   }
 
   void handleAction(String payload) {
@@ -202,8 +259,8 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
         //flutterLocalNotificationsPlugin.cancelAll();
         break;
       case actionSubmitDidYouTakeActivePauseId:
-        stopTimerDidYouTakeActivePause();
         restartTimerNextActiveBreak();
+        startTimerNextActiveBreak();
         break;
       default:
         print("Acción desconocida");
@@ -256,11 +313,11 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
               onPressed: secondsRemainingNextActiveBreak ==
                       defaultSecondsRemainingNextActiveBreak
                   ? () {
-                      startTimerNextActiveBreak(); // Iniciar el temporizador al presionar el botón
+                      startTimerNextActiveBreak();
                     }
                   : () {
                       stopTimerDidYouTakeActivePause();
-                      restartTimerNextActiveBreak(); // Iniciar el temporizador al presionar el botón
+                      restartTimerNextActiveBreak();
                     },
               child: secondsRemainingNextActiveBreak ==
                       defaultSecondsRemainingNextActiveBreak
@@ -271,14 +328,23 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
                       color: Colors.deepOrangeAccent,
                       Icons.restart_alt),
             ),
+            ElevatedButton(
+              onPressed: () {
+                startTimerNextActiveBreak();
+                starTimerDidYouTakeActivePause();
+                stopTimerDidYouTakeActivePause();
+                stopTimerNextActiveBreak();
+              },
+              child: const Icon(size: 30, color: Colors.red, Icons.stop),
+            ),
             const SizedBox(height: 20),
             ElevatedButton(
               style: const ButtonStyle(
                   fixedSize: WidgetStatePropertyAll(Size(300, 70))),
               onPressed: secondsRemainingNextActiveBreak == 0
                   ? () {
-                      stopTimerDidYouTakeActivePause();
-                      restartTimerNextActiveBreak(); // Iniciar el temporizador al presionar el botón
+                      restartTimerNextActiveBreak();
+                      startTimerNextActiveBreak();
                     }
                   : null,
               child: const Text(
@@ -329,24 +395,4 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
     //selectNotificationStream.close();
     super.dispose();
   }
-}
-
-// Esta función se ejecuta cuando el servicio se inicia
-void onStart(ServiceInstance service) {
-  // Temporizador que se ejecuta cada segundo
-  Timer.periodic(const Duration(seconds: 1), (timer) async {
-    if (service is AndroidServiceInstance) {
-      if (await service.isForegroundService()) {
-        // Actualiza la notificación de servicio en primer plano
-        service.setForegroundNotificationInfo(
-          title: "Servicio de Contador",
-          content: "Contando en segundo plano...",
-        );
-      }
-    }
-
-    // Incrementa el contador y actualiza la UI
-    print("Servicio ejecutándose en segundo plano: ${DateTime.now()}");
-    service.invoke("update");
-  });
 }

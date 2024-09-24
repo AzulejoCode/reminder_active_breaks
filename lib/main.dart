@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:reminder_active_breaks/active_break_app.dart';
+import 'package:reminder_active_breaks/preferences/reminder_active_breaks_preferences_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  ReminderActiveBreaksPreferencesService.init();
   runApp(const MyApp());
 }
 
