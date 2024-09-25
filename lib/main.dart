@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_datetime_picker_plus/flutter_datetime_picker_plus.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:reminder_active_breaks/preferences/reminder_active_breaks_preferences_service.dart';
@@ -9,6 +10,13 @@ import 'package:reminder_active_breaks/preferences/reminder_active_breaks_prefer
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
+}
+
+class TimeFormat {
+  String minutes;
+  String seconds;
+
+  TimeFormat(this.minutes, this.seconds);
 }
 
 class MyApp extends StatelessWidget {
@@ -291,11 +299,69 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
     }
   }
 
+  void _showEditOptions(BuildContext context) {
+    DatePicker.showTimePicker(context,
+        currentTime: DateTime.fromMillisecondsSinceEpoch(
+            secondsRemainingNextActiveBreak * 1000,
+            isUtc: true),
+        locale: LocaleType.es, onConfirm: (dateTime) {
+      double secondsParsed = dateTime.millisecondsSinceEpoch / 1000;
+      secondsRemainingNextActiveBreak = secondsParsed.toInt();
+      defaultSecondsRemainingNextActiveBreak = secondsRemainingNextActiveBreak;
+      ReminderActiveBreaksPreferencesService.setSecondsRemainingNextActiveBreak(
+          secondsRemainingNextActiveBreak);
+      ReminderActiveBreaksPreferencesService
+          .setDefaultSecondsRemainingNextActiveBreak(
+              defaultSecondsRemainingNextActiveBreak);
+      setState(() {});
+    });
+    /*    return showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+              title: const Text('Edición'),
+              content: const Row(
+                children: [
+                  Text('¿Cada cuánto quieres tomar las pausas activas?'),
+                ],
+              ),
+              actions: <Widget>[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      label: const Text(''),
+                      onPressed: () {},
+                      icon:
+                          const Icon(size: 40, color: Colors.red, Icons.cancel),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton.icon(
+                      label: const Text(''),
+                      onPressed: () {},
+                      icon:
+                          const Icon(size: 40, color: Colors.green, Icons.save),
+                    )
+                  ],
+                ),
+              ]);
+        });*/
+  }
+
   // Convertir los segundos restantes en formato de minutos:segundos
-  String formatTime(int seconds) {
+  String formatTime(int secondstoParse) {
+    TimeFormat time = secondsToTime(secondstoParse);
+    String minutes = time.minutes;
+    String seconds = time.seconds;
+    return '${minutes.toString()}:${seconds.toString()}';
+  }
+
+  TimeFormat secondsToTime(int seconds) {
     int minutes = seconds ~/ 60;
     int remainingSeconds = seconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+    return TimeFormat(minutes.toString().padLeft(2, '0'),
+        remainingSeconds.toString().padLeft(2, '0'));
   }
 
   @override
@@ -351,7 +417,7 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
                             startTimerNextActiveBreak();
                           },
                           child: const Icon(
-                              size: 30,
+                              size: 40,
                               color: Colors.green,
                               Icons.not_started_sharp),
                         )
@@ -360,14 +426,14 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
                             pauseTimerNextActiveBreak();
                           },
                           child: const Icon(
-                              size: 30, color: Colors.green, Icons.pause),
+                              size: 40, color: Colors.green, Icons.pause),
                         ),
                   ElevatedButton(
                     onPressed: () {
                       stopTimerDidYouTakeActivePause();
                       stopTimerNextActiveBreak();
                     },
-                    child: const Icon(size: 30, color: Colors.red, Icons.stop),
+                    child: const Icon(size: 40, color: Colors.red, Icons.stop),
                   ),
                 ],
               ),
@@ -416,6 +482,14 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
                   : [const SizedBox(height: 0)]),
             ],
           ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => {_showEditOptions(context)},
+        tooltip: 'Editar',
+        child: const Icon(
+          Icons.edit,
+          size: 40,
         ),
       ),
     );
