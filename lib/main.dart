@@ -76,33 +76,29 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
     initializeNotifications();
   }
 
-  void _loadTimer() async {
-    setState(() {
-      ReminderActiveBreaksPreferencesService
-              .getTimerSecondsRemainingNextActiveBreakIsUpBreak()
-          .then((onValue) => {timerNextActiveBreakIsUp = onValue});
+  Future<void> _loadTimer() async {
+    timerNextActiveBreakIsUp = await ReminderActiveBreaksPreferencesService
+        .getTimerSecondsRemainingNextActiveBreakIsUpBreak();
 
-      ReminderActiveBreaksPreferencesService
-              .getTimerSecondsRemainingDidYouTakeActivePauseIsUp()
-          .then((onValue) => {timerDidYouTakeActivePauseIsUp = onValue});
+    timerDidYouTakeActivePauseIsUp =
+        await ReminderActiveBreaksPreferencesService
+            .getTimerSecondsRemainingDidYouTakeActivePauseIsUp();
 
-      ReminderActiveBreaksPreferencesService
-              .getDefaultSecondsRemainingNextActiveBreak()
-          .then(
-              (onValue) => {defaultSecondsRemainingNextActiveBreak = onValue});
-      ReminderActiveBreaksPreferencesService
-              .getSecondsRemainingNextActiveBreak()
-          .then((onValue) => {secondsRemainingNextActiveBreak = onValue});
+    defaultSecondsRemainingNextActiveBreak =
+        await ReminderActiveBreaksPreferencesService
+            .getDefaultSecondsRemainingNextActiveBreak();
+    secondsRemainingNextActiveBreak =
+        await ReminderActiveBreaksPreferencesService
+            .getSecondsRemainingNextActiveBreak();
 
-      ReminderActiveBreaksPreferencesService
-              .getDefaultSecondsRemainingDidYouTakeActivePause()
-          .then((onValue) =>
-              {defaultSecondsRemaininDidYouTakeActivePause = onValue});
+    defaultSecondsRemaininDidYouTakeActivePause =
+        await ReminderActiveBreaksPreferencesService
+            .getDefaultSecondsRemainingDidYouTakeActivePause();
 
-      ReminderActiveBreaksPreferencesService
-              .getSecondsRemainingDidYouTakeActivePause()
-          .then((onValue) => {secondsRemainingDidYouTakeActivePause = onValue});
-    });
+    secondsRemainingDidYouTakeActivePause =
+        await ReminderActiveBreaksPreferencesService
+            .getSecondsRemainingDidYouTakeActivePause();
+    setState(() {});
   }
 
   // Solo en iOS: Esta función permite que el servicio siga funcionando en segundo plano
@@ -131,8 +127,6 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
       initializationSettings,
       onDidReceiveNotificationResponse:
           (NotificationResponse notificationResponse) {
-        print(notificationResponse.notificationResponseType);
-        print(notificationResponse.actionId);
         switch (notificationResponse.notificationResponseType) {
           case NotificationResponseType.selectedNotificationAction:
             handleAction(notificationResponse.actionId ?? '');
@@ -170,146 +164,129 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
 
   // Función que inicia el temporizador y cuenta hacia atrás
   void startTimerNextActiveBreak() {
-    setState(() {
-      timerNextActiveBreakIsUp = true;
-      ReminderActiveBreaksPreferencesService
-          .setTimerSecondsRemainingNextActiveBreakIsUpBreak(
-              timerNextActiveBreakIsUp);
+    timerNextActiveBreakIsUp = true;
+    ReminderActiveBreaksPreferencesService
+        .setTimerSecondsRemainingNextActiveBreakIsUpBreak(
+            timerNextActiveBreakIsUp);
 
-      timerDidYouTakeActivePauseIsUp = false;
-      ReminderActiveBreaksPreferencesService
-          .setTimerSecondsRemainingDidYouTakeActivePauseIsUp(
-              timerDidYouTakeActivePauseIsUp);
-    });
+    stopTimerDidYouTakeActivePause();
+    setState(() {});
+
     timerNextActiveBreak = Timer.periodic(const Duration(seconds: 1),
         (Timer timerOfTimerNextActiveBreak) {
-      setState(() {
-        if (!timerNextActiveBreakIsUp) {
-          timerOfTimerNextActiveBreak.cancel();
-        } else if (secondsRemainingNextActiveBreak > 0) {
-          secondsRemainingNextActiveBreak--;
-          ReminderActiveBreaksPreferencesService
-              .setSecondsRemainingNextActiveBreak(
-                  secondsRemainingNextActiveBreak);
-        } else {
-          // Mostrar notificación cuando el tiempo llega a cero
-          showNotification(
-              title: 'Es hora de una pausa activa',
-              description: 'Levántate y estira un poco!');
-          timerOfTimerNextActiveBreak.cancel();
-          starTimerDidYouTakeActivePause();
-        }
-      });
+      if (!timerNextActiveBreakIsUp) {
+        timerOfTimerNextActiveBreak.cancel();
+      } else if (secondsRemainingNextActiveBreak > 0) {
+        secondsRemainingNextActiveBreak--;
+        ReminderActiveBreaksPreferencesService
+            .setSecondsRemainingNextActiveBreak(
+                secondsRemainingNextActiveBreak);
+      } else {
+        // Mostrar notificación cuando el tiempo llega a cero
+        showNotification(
+            title: 'Es hora de una pausa activa',
+            description: 'Levántate y estira un poco!');
+        timerOfTimerNextActiveBreak.cancel();
+        starTimerDidYouTakeActivePause();
+      }
+      setState(() {});
     });
   }
 
   void starTimerDidYouTakeActivePause() {
-    setState(() {
-      timerDidYouTakeActivePauseIsUp = true;
-      ReminderActiveBreaksPreferencesService
-          .setTimerSecondsRemainingDidYouTakeActivePauseIsUp(
-              timerDidYouTakeActivePauseIsUp);
-    });
+    timerDidYouTakeActivePauseIsUp = true;
+    ReminderActiveBreaksPreferencesService
+        .setTimerSecondsRemainingDidYouTakeActivePauseIsUp(
+            timerDidYouTakeActivePauseIsUp);
+    setState(() {});
+
     timerDidYouTakeActivePause = Timer.periodic(const Duration(seconds: 1),
         (Timer timerOfTimerDidYouTakeActivePause) {
-      setState(() {
-        if (!timerDidYouTakeActivePauseIsUp) {
-          timerOfTimerDidYouTakeActivePause.cancel();
-        } else if (secondsRemainingDidYouTakeActivePause > 0) {
-          secondsRemainingDidYouTakeActivePause--;
-          ReminderActiveBreaksPreferencesService
-              .setSecondsRemainingDidYouTakeActivePause(
-                  secondsRemainingDidYouTakeActivePause);
-        } else {
-          // Mostrar notificación cuando el tiempo llega a cero
-          showNotification(
-              title: 'Ey 🖖🏻!',
-              description: '¿Hiciste la pausa activa 😠?',
-              actions: <AndroidNotificationAction>[
-                const AndroidNotificationAction(
-                  actionSubmitDidYouTakeActivePauseId,
-                  'Por supuesto 😎!',
-                  showsUserInterface: true,
-                  // By default, Android plugin will dismiss the notification when the
-                  // user tapped on a action (this mimics the behavior on iOS).
-                  cancelNotification: true,
-                ),
-                const AndroidNotificationAction(
-                  actionDeclineDidYouTakeActivePauseId,
-                  'No 😔',
-                  showsUserInterface: true,
-                  // By default, Android plugin will dismiss the notification when the
-                  // user tapped on a action (this mimics the behavior on iOS).
-                  cancelNotification: true,
-                ),
-              ]);
-          secondsRemainingDidYouTakeActivePause =
-              defaultSecondsRemaininDidYouTakeActivePause;
-          ReminderActiveBreaksPreferencesService
-              .setSecondsRemainingDidYouTakeActivePause(
-                  secondsRemainingDidYouTakeActivePause);
-          //timerOfTimerDidYouTakeActivePause.cancel();
-        }
-      });
-    });
-  }
-
-  void restartTimerNextActiveBreak() {
-    // Reiniciar el temporizador para la próxima pausa
-    setState(() {
-      secondsRemainingNextActiveBreak = defaultSecondsRemainingNextActiveBreak;
-      ReminderActiveBreaksPreferencesService.setSecondsRemainingNextActiveBreak(
-          secondsRemainingNextActiveBreak);
-
-      secondsRemainingDidYouTakeActivePause =
-          defaultSecondsRemaininDidYouTakeActivePause;
-      ReminderActiveBreaksPreferencesService
-          .setSecondsRemainingDidYouTakeActivePause(
-              secondsRemainingDidYouTakeActivePause);
-
-      timerNextActiveBreakIsUp = true;
-      ReminderActiveBreaksPreferencesService
-          .setTimerSecondsRemainingNextActiveBreakIsUpBreak(
-              timerNextActiveBreakIsUp);
-
-      timerDidYouTakeActivePauseIsUp = false;
-      ReminderActiveBreaksPreferencesService
-          .setTimerSecondsRemainingDidYouTakeActivePauseIsUp(
-              timerDidYouTakeActivePauseIsUp);
-    }); // Actualizar la UI
-  }
-
-  void stopTimerDidYouTakeActivePause() {
-    setState(() {
-      timerDidYouTakeActivePauseIsUp = false;
-      ReminderActiveBreaksPreferencesService
-          .setTimerSecondsRemainingDidYouTakeActivePauseIsUp(
-              timerDidYouTakeActivePauseIsUp);
+      if (!timerDidYouTakeActivePauseIsUp) {
+        timerOfTimerDidYouTakeActivePause.cancel();
+      } else if (secondsRemainingDidYouTakeActivePause > 0) {
+        secondsRemainingDidYouTakeActivePause--;
+        ReminderActiveBreaksPreferencesService
+            .setSecondsRemainingDidYouTakeActivePause(
+                secondsRemainingDidYouTakeActivePause);
+      } else {
+        // Mostrar notificación cuando el tiempo llega a cero
+        showNotification(
+            title: 'Ey 🖖🏻!',
+            description: '¿Hiciste la pausa activa 😠?',
+            actions: <AndroidNotificationAction>[
+              const AndroidNotificationAction(
+                actionSubmitDidYouTakeActivePauseId,
+                'Por supuesto 😎!',
+                showsUserInterface: true,
+                // By default, Android plugin will dismiss the notification when the
+                // user tapped on a action (this mimics the behavior on iOS).
+                cancelNotification: true,
+              ),
+              const AndroidNotificationAction(
+                actionDeclineDidYouTakeActivePauseId,
+                'No 😔',
+                showsUserInterface: true,
+                // By default, Android plugin will dismiss the notification when the
+                // user tapped on a action (this mimics the behavior on iOS).
+                cancelNotification: true,
+              ),
+            ]);
+        secondsRemainingDidYouTakeActivePause =
+            defaultSecondsRemaininDidYouTakeActivePause;
+        ReminderActiveBreaksPreferencesService
+            .setSecondsRemainingDidYouTakeActivePause(
+                secondsRemainingDidYouTakeActivePause);
+        //timerOfTimerDidYouTakeActivePause.cancel();
+      }
+      setState(() {});
     });
   }
 
   void stopTimerNextActiveBreak() {
-    setState(() {
-      timerNextActiveBreakIsUp = false;
-      ReminderActiveBreaksPreferencesService
-          .setTimerSecondsRemainingNextActiveBreakIsUpBreak(
-              timerNextActiveBreakIsUp);
-    });
+    // Reiniciar el temporizador para la próxima pausa
+    secondsRemainingNextActiveBreak = defaultSecondsRemainingNextActiveBreak;
+    ReminderActiveBreaksPreferencesService.setSecondsRemainingNextActiveBreak(
+        secondsRemainingNextActiveBreak);
+
+    timerNextActiveBreakIsUp = false;
+    ReminderActiveBreaksPreferencesService
+        .setTimerSecondsRemainingNextActiveBreakIsUpBreak(
+            timerNextActiveBreakIsUp);
+    setState(() {}); // Actualizar la UI
+  }
+
+  void stopTimerDidYouTakeActivePause() {
+    secondsRemainingDidYouTakeActivePause =
+        defaultSecondsRemaininDidYouTakeActivePause;
+    ReminderActiveBreaksPreferencesService
+        .setSecondsRemainingDidYouTakeActivePause(
+            secondsRemainingDidYouTakeActivePause);
+
+    timerDidYouTakeActivePauseIsUp = false;
+    ReminderActiveBreaksPreferencesService
+        .setTimerSecondsRemainingDidYouTakeActivePauseIsUp(
+            timerDidYouTakeActivePauseIsUp);
+    setState(() {});
+  }
+
+  void pauseTimerNextActiveBreak() {
+    timerNextActiveBreakIsUp = false;
+    ReminderActiveBreaksPreferencesService
+        .setTimerSecondsRemainingNextActiveBreakIsUpBreak(
+            timerNextActiveBreakIsUp);
+    setState(() {});
   }
 
   void handleAction(String payload) {
     switch (payload) {
       case actionDeclineDidYouTakeActivePauseId:
-        //print('Que mal!');
-        //starTimerDidYouTakeActivePause();
-        //flutterLocalNotificationsPlugin.cancelAll();
         break;
       case actionSubmitDidYouTakeActivePauseId:
-        restartTimerNextActiveBreak();
         startTimerNextActiveBreak();
         break;
       default:
-        print("Acción desconocida");
+        debugPrint("Acción desconocida");
         break;
     }
   }
@@ -328,108 +305,117 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
         title: const Text('Recordatorio de Pausas Activas'),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Próxima pausa activa en:',
-              style: TextStyle(fontSize: 24),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              formatTime(secondsRemainingNextActiveBreak),
-              // Muestra el tiempo restante
-              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 40),
-            const Text(
-              'Te preguntaremos si tomaste esta pausa activa dentro de:',
-              // Muestra el tiempo restante
-              style: TextStyle(
-                fontSize: 16,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(40, 0, 40, 0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text(
+                'Próxima pausa activa en:',
+                style: TextStyle(fontSize: 24),
               ),
-            ),
-            Text(
-              formatTime(secondsRemainingDidYouTakeActivePause),
-              // Muestra el tiempo restante
-              style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton(
-              onPressed: secondsRemainingNextActiveBreak ==
-                      defaultSecondsRemainingNextActiveBreak
-                  ? () {
-                      startTimerNextActiveBreak();
-                    }
-                  : () {
+              const SizedBox(height: 20),
+              Text(
+                formatTime(secondsRemainingNextActiveBreak),
+                // Muestra el tiempo restante
+                style:
+                    const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 40),
+              ...(timerDidYouTakeActivePauseIsUp
+                  ? [
+                      const Text(
+                        'Te preguntaremos si tomaste esta pausa activa dentro de:',
+                        // Muestra el tiempo restante
+                        style: TextStyle(
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        formatTime(secondsRemainingDidYouTakeActivePause),
+                        // Muestra el tiempo restante
+                        style: const TextStyle(
+                            fontSize: 25, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 40),
+                    ]
+                  : [const SizedBox(height: 0)]),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  !timerNextActiveBreakIsUp
+                      ? ElevatedButton(
+                          onPressed: () {
+                            startTimerNextActiveBreak();
+                          },
+                          child: const Icon(
+                              size: 30,
+                              color: Colors.green,
+                              Icons.not_started_sharp),
+                        )
+                      : ElevatedButton(
+                          onPressed: () {
+                            pauseTimerNextActiveBreak();
+                          },
+                          child: const Icon(
+                              size: 30, color: Colors.green, Icons.pause),
+                        ),
+                  ElevatedButton(
+                    onPressed: () {
                       stopTimerDidYouTakeActivePause();
-                      restartTimerNextActiveBreak();
+                      stopTimerNextActiveBreak();
                     },
-              child: secondsRemainingNextActiveBreak ==
-                      defaultSecondsRemainingNextActiveBreak
-                  ? const Icon(
-                      size: 60, color: Colors.green, Icons.not_started_sharp)
-                  : const Icon(
-                      size: 30,
-                      color: Colors.deepOrangeAccent,
-                      Icons.restart_alt),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                startTimerNextActiveBreak();
-                starTimerDidYouTakeActivePause();
-                stopTimerDidYouTakeActivePause();
-                stopTimerNextActiveBreak();
-              },
-              child: const Icon(size: 30, color: Colors.red, Icons.stop),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              style: const ButtonStyle(
-                  fixedSize: WidgetStatePropertyAll(Size(300, 70))),
-              onPressed: secondsRemainingNextActiveBreak == 0
-                  ? () {
-                      restartTimerNextActiveBreak();
-                      startTimerNextActiveBreak();
-                    }
-                  : null,
-              child: const Text(
-                'Ya tomé mi pausa activa 🥳',
-                style: TextStyle(fontSize: 20),
+                    child: const Icon(size: 30, color: Colors.red, Icons.stop),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Levantate 🙆🏻‍!',
-              // Muestra el tiempo restante
-              style: TextStyle(
-                  fontSize: 30,
-                  color: secondsRemainingNextActiveBreak == 0
-                      ? Colors.black
-                      : Colors.black12,
-                  fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Hidratate 💧!',
-              // Muestra el tiempo restante
-              style: TextStyle(
-                  fontSize: 30,
-                  color: secondsRemainingNextActiveBreak == 0
-                      ? Colors.black
-                      : Colors.black12,
-                  fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Estira 💆🏻‍!',
-              // Muestra el tiempo restante
-              style: TextStyle(
-                  fontSize: 30,
-                  color: secondsRemainingNextActiveBreak == 0
-                      ? Colors.black
-                      : Colors.black12,
-                  fontWeight: FontWeight.bold),
-            ),
-          ],
+              ...(timerDidYouTakeActivePauseIsUp
+                  ? [
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        style: const ButtonStyle(
+                            fixedSize: WidgetStatePropertyAll(Size(300, 70))),
+                        onPressed: !timerNextActiveBreakIsUp
+                            ? () {
+                                startTimerNextActiveBreak();
+                              }
+                            : null,
+                        child: const Text(
+                          'Ya tomé mi pausa activa 🥳',
+                          style: TextStyle(fontSize: 20),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Levantate 🙆🏻‍!',
+                        // Muestra el tiempo restante
+                        style: TextStyle(
+                            fontSize: 30,
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      const Text(
+                        'Hidratate 💧!',
+                        // Muestra el tiempo restante
+                        style: TextStyle(
+                            fontSize: 30,
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      const Text(
+                        'Estira 💆🏻‍!',
+                        // Muestra el tiempo restante
+                        style: TextStyle(
+                            fontSize: 30,
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold),
+                      )
+                    ]
+                  : [const SizedBox(height: 0)]),
+            ],
+          ),
         ),
       ),
     );
