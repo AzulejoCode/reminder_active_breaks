@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_datetime_picker_plus/flutter_datetime_picker_plus.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:reminder_active_breaks/preferences/reminder_active_breaks_preferences_service.dart';
 
@@ -28,21 +29,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Recordatorio de Pausas Activas',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
         useMaterial3: true,
       ),
@@ -76,12 +62,55 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
   late Timer timerDidYouTakeActivePause;
   bool timerDidYouTakeActivePauseIsUp = true;
 
+  DateTime activePauseCounterStartTime = DateTime.now();
+  DateTime activePauseCounterLastTime = DateTime.now();
+
   @override
   void initState() {
     super.initState();
     _loadTimer();
     requestNotificationPermission();
     initializeNotifications();
+    _requestOverlayPermission();
+  }
+
+  // Función para solicitar permiso de ventana flotante
+  Future<void> _requestOverlayPermission() async {
+    debugPrint('🧐 Revisando permisos');
+    final bool status = await FlutterOverlayWindow.isPermissionGranted();
+    if (status) {
+      debugPrint('✅ Tenemos los permisos');
+    }
+    if (!status) {
+      debugPrint('🙏 Solicitando permisos');
+      bool? granted = await FlutterOverlayWindow.requestPermission();
+      if (!granted!) {
+        // Manejar la falta de permiso
+        debugPrint('🚨 PERMISO DENEGADO');
+      }
+    }
+  }
+
+  // Mostrar la ventana flotante
+  Future<void> _showOverlay() async {
+    debugPrint('🙆🏻‍ Mostrando widget flotante!');
+    FlutterOverlayWindow.showOverlay(
+      height: 150,
+      // Altura de la ventana flotante
+      width: 150,
+      // Anchura de la ventana flotante
+      alignment: OverlayAlignment.center,
+      // Alineación en la pantalla
+      enableDrag: true,
+      // Habilitar arrastrar
+      flag: OverlayFlag.defaultFlag, // Ajustes predeterminados
+    );
+
+    bool overlayIsActive = await FlutterOverlayWindow.isActive();
+    if (overlayIsActive) {
+      debugPrint('🔺 El Widget flotante está activo!');
+      // await FlutterOverlayWindow.updateFlag(OverlayFlag.defaultFlag);
+    }
   }
 
   Future<void> _loadTimer() async {
@@ -176,7 +205,7 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
     ReminderActiveBreaksPreferencesService
         .setTimerSecondsRemainingNextActiveBreakIsUpBreak(
             timerNextActiveBreakIsUp);
-
+    activePauseCounterStartTime = DateTime.now();
     stopTimerDidYouTakeActivePause();
     setState(() {});
 
@@ -186,14 +215,15 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
         timerOfTimerNextActiveBreak.cancel();
       } else if (secondsRemainingNextActiveBreak > 0) {
         secondsRemainingNextActiveBreak--;
+        activePauseCounterLastTime = DateTime.now();
         ReminderActiveBreaksPreferencesService
             .setSecondsRemainingNextActiveBreak(
                 secondsRemainingNextActiveBreak);
       } else {
         // Mostrar notificación cuando el tiempo llega a cero
         showNotification(
-            title: 'Es hora de una pausa activa',
-            description: 'Levántate y estira un poco!');
+            title: '⏰ Es hora de una pausa activa 💪🏻',
+            description: '🥱 Levántate y estira un poco 🙆🏻‍!');
         timerOfTimerNextActiveBreak.cancel();
         starTimerDidYouTakeActivePause();
       }
@@ -221,11 +251,11 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
         // Mostrar notificación cuando el tiempo llega a cero
         showNotification(
             title: 'Ey 🖖🏻!',
-            description: '¿Hiciste la pausa activa 😠?',
+            description: '¿Hiciste la pausa activa 🤨?',
             actions: <AndroidNotificationAction>[
               const AndroidNotificationAction(
                 actionSubmitDidYouTakeActivePauseId,
-                'Por supuesto 😎!',
+                '¡Por supuesto 😎!',
                 showsUserInterface: true,
                 // By default, Android plugin will dismiss the notification when the
                 // user tapped on a action (this mimics the behavior on iOS).
@@ -291,6 +321,7 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
       case actionDeclineDidYouTakeActivePauseId:
         break;
       case actionSubmitDidYouTakeActivePauseId:
+        stopTimerNextActiveBreak();
         startTimerNextActiveBreak();
         break;
       default:
@@ -381,26 +412,35 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
                 'Próxima pausa activa en:',
                 style: TextStyle(fontSize: 24),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
+              Text(
+                'Hora inicio contador: ${activePauseCounterStartTime.toLocal().hour}:${activePauseCounterStartTime.minute}:${activePauseCounterStartTime.second}',
+                style: const TextStyle(fontSize: 16, color: Colors.blueGrey),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                'Hora ultimo conteo: ${activePauseCounterLastTime.toLocal().hour}:${activePauseCounterLastTime.minute}:${activePauseCounterLastTime.second}',
+                style: const TextStyle(fontSize: 16, color: Colors.blueGrey),
+              ),
+              const SizedBox(height: 10),
+              // Tiempo restante para la proxima pausa activa
               Text(
                 formatTime(secondsRemainingNextActiveBreak),
-                // Muestra el tiempo restante
                 style:
                     const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 40),
+              // Sección para preguntar si ya tomó la pausa activa
               ...(timerDidYouTakeActivePauseIsUp
                   ? [
                       const Text(
                         'Te preguntaremos si tomaste esta pausa activa dentro de:',
-                        // Muestra el tiempo restante
                         style: TextStyle(
                           fontSize: 16,
                         ),
                       ),
                       Text(
                         formatTime(secondsRemainingDidYouTakeActivePause),
-                        // Muestra el tiempo restante
                         style: const TextStyle(
                             fontSize: 25, fontWeight: FontWeight.bold),
                       ),
@@ -443,11 +483,10 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
                       ElevatedButton(
                         style: const ButtonStyle(
                             fixedSize: WidgetStatePropertyAll(Size(300, 70))),
-                        onPressed: !timerNextActiveBreakIsUp
-                            ? () {
-                                startTimerNextActiveBreak();
-                              }
-                            : null,
+                        onPressed: () {
+                          stopTimerNextActiveBreak();
+                          startTimerNextActiveBreak();
+                        },
                         child: const Text(
                           'Ya tomé mi pausa activa 🥳',
                           style: TextStyle(fontSize: 20),
@@ -485,13 +524,29 @@ class _ActiveBreakAppState extends State<ActiveBreakApp> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => {_showEditOptions(context)},
+        onPressed: () async {
+          _showEditOptions(context);
+          //_showOverlay();
+        },
         tooltip: 'Editar',
         child: const Icon(
           Icons.edit,
           size: 40,
         ),
       ),
+/*      persistentFooterButtons: [
+        FloatingActionButton(
+          onPressed: () async {
+            _showOverlay();
+            //_showOverlay();
+          },
+          tooltip: 'Mostrar Widget Flotante',
+          child: const Icon(
+            Icons.opacity,
+            size: 40,
+          ),
+        ),
+      ],*/
     );
   }
 

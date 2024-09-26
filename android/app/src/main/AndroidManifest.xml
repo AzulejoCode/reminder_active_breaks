@@ -6,13 +6,26 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" /> <!-- Agregar este permiso -->
-
+    <!-- INICIO: Permisos para widget flotante : flutter_overlay_window -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- FIN: Permisos para widget flotante: flutter_overlay_window -->
     <application
         android:name="${applicationName}"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Recordatorio Pausas Activas">
-
+        <!-- INICIO: Permisos para widget flotante : flutter_overlay_window -->
+        <service
+            android:name="flutter.overlay.window.flutter_overlay_window.OverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="explanation_for_special_use" />
+        </service>
+        <!-- FIN: Permisos para widget flotante: flutter_overlay_window -->
         <service
             android:name="id.flutter.flutter_background_service.BackgroundService"
             android:exported="false"
